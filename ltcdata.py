@@ -3,7 +3,7 @@ import codecs
 import numpy as np
 import pickle
 
-from tensorflow.io.gfile import GFile
+import tensorflow as tf
 
 import BERT_tokenization as tokenizer
 
@@ -61,7 +61,7 @@ def parse_line(line):
 ### vocab process
 ###
 def load_vocab(path):
-    with open(path, "rb") as f:
+    with tf.io.gfile.GFile(path, "rb") as f:
         vocab_obj = pickle.load(f)
     vocab, ivocab = vocab_obj["vocab"], vocab_obj["ivocab"]
 
@@ -133,7 +133,7 @@ def load_examples(
     max_sid = 0
     max_tid_this = 0
     tid_offset = 0
-    for line in GFile(path, "r"):
+    for line in tf.io.gfile.GFile(path, "r"):
         tid, sent, sid = parse_line(line)
 
         if sid != max_sid:

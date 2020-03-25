@@ -8,7 +8,6 @@ import datetime
 import data_helpers
 import ltcdata
 from text_cnn import TextCNN
-from tensorflow.contrib import learn
 
 # Parameters
 # ==================================================
