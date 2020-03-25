@@ -150,6 +150,7 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
             # Generate batches
             batches = data_helpers.batch_iter(
                 list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
+            print("do %d epochs" % FLAGS.num_epochs)
             # Training loop. For each batch...
             for batch in batches:
                 x_batch, y_batch = zip(*batch)
