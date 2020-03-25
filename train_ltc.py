@@ -101,8 +101,7 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
             # Checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
             checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
             checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-            if not os.path.exists(checkpoint_dir):
-                os.makedirs(checkpoint_dir)
+            print("checkpoints are saved to", checkpoint_dir)
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
 
             # Initialize all variables
@@ -158,6 +157,9 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 if current_step % FLAGS.checkpoint_every == 0:
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                     print("Saved model checkpoint to {}\n".format(path))
+            
+            path = saver.save(sess, checkpoint_prefix, global_step=current_step)
+            print("Finally saved model checkpoint to {}\n".format(path))
 
 def main(argv=None):
     for sid in ltcdata.get_sid_list(FLAGS.united_sid):
