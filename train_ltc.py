@@ -43,11 +43,6 @@ tf.flags.DEFINE_string("data_dir", "data_ltc", "Directory of datasets")
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
 
 FLAGS = tf.flags.FLAGS
-FLAGS._parse_flags()
-# print("\nParameters:")
-# for attr, value in sorted(FLAGS.__flags.items()):
-#     print("{}={}".format(attr.upper(), value))
-# print("")
 
 def train(data_train, data_dev, vocab_size, out_dir="."):
     # Training
