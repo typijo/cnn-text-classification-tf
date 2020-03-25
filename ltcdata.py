@@ -3,7 +3,7 @@ import codecs
 import numpy as np
 import pickle
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import BERT_tokenization as tokenizer
 
