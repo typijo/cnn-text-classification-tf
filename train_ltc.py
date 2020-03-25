@@ -6,6 +6,7 @@ import os
 import time
 import datetime
 import data_helpers
+import ltcdata
 from text_cnn import TextCNN
 from tensorflow.contrib import learn
 
@@ -26,13 +27,20 @@ tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 
 
 # Training parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
-tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs (default: 200)")
+tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
 tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
 tf.flags.DEFINE_integer("num_checkpoints", 5, "Number of checkpoints to store (default: 5)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
+
+# ltc Parameters
+tf.flags.DEFINE_boolean("use_BERT_tokenizer", False, "Whether use tokenizer of BERT")
+tf.flags.DEFINE_boolean("united_sid", False, "Make a united classifier")
+tf.flags.DEFINE_boolean("global_sid", False, "Make a classifier of global sid. This works only when united_sid=True")
+tf.flags.DEFINE_string("data_dir", "data_ltc", "Directory of datasets")
+tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
 
 FLAGS = tf.flags.FLAGS
 # FLAGS._parse_flags()
@@ -41,40 +49,11 @@ FLAGS = tf.flags.FLAGS
 #     print("{}={}".format(attr.upper(), value))
 # print("")
 
-def preprocess():
-    # Data Preparation
-    # ==================================================
-
-    # Load data
-    print("Loading data...")
-    x_text, y = data_helpers.load_data_and_labels(FLAGS.positive_data_file, FLAGS.negative_data_file)
-
-    # Build vocabulary
-    max_document_length = max([len(x.split(" ")) for x in x_text])
-    vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
-    x = np.array(list(vocab_processor.fit_transform(x_text)))
-
-    # Randomly shuffle data
-    np.random.seed(10)
-    shuffle_indices = np.random.permutation(np.arange(len(y)))
-    x_shuffled = x[shuffle_indices]
-    y_shuffled = y[shuffle_indices]
-
-    # Split train/test set
-    # TODO: This is very crude, should use cross-validation
-    dev_sample_index = -1 * int(FLAGS.dev_sample_percentage * float(len(y)))
-    x_train, x_dev = x_shuffled[:dev_sample_index], x_shuffled[dev_sample_index:]
-    y_train, y_dev = y_shuffled[:dev_sample_index], y_shuffled[dev_sample_index:]
-
-    del x, y, x_shuffled, y_shuffled
-
-    print("Vocabulary Size: {:d}".format(len(vocab_processor.vocabulary_)))
-    print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
-    return x_train, y_train, vocab_processor, x_dev, y_dev
-
-def train(x_train, y_train, vocab_processor, x_dev, y_dev):
+def train(data_train, data_dev, vocab_size, out_dir="."):
     # Training
     # ==================================================
+    x_train, y_train = data_train
+    x_dev, y_dev = data_dev
 
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
@@ -85,7 +64,7 @@ def train(x_train, y_train, vocab_processor, x_dev, y_dev):
             cnn = TextCNN(
                 sequence_length=x_train.shape[1],
                 num_classes=y_train.shape[1],
-                vocab_size=len(vocab_processor.vocabulary_),
+                vocab_size=vocab_size,
                 embedding_size=FLAGS.embedding_dim,
                 filter_sizes=list(map(int, FLAGS.filter_sizes.split(","))),
                 num_filters=FLAGS.num_filters,
@@ -108,8 +87,6 @@ def train(x_train, y_train, vocab_processor, x_dev, y_dev):
             grad_summaries_merged = tf.summary.merge(grad_summaries)
 
             # Output directory for models and summaries
-            timestamp = str(int(time.time()))
-            out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
             print("Writing to {}\n".format(out_dir))
 
             # Summaries for loss and accuracy
@@ -132,9 +109,6 @@ def train(x_train, y_train, vocab_processor, x_dev, y_dev):
             if not os.path.exists(checkpoint_dir):
                 os.makedirs(checkpoint_dir)
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
-
-            # Write vocabulary
-            vocab_processor.save(os.path.join(out_dir, "vocab"))
 
             # Initialize all variables
             sess.run(tf.global_variables_initializer())
@@ -189,8 +163,19 @@ def train(x_train, y_train, vocab_processor, x_dev, y_dev):
                     print("Saved model checkpoint to {}\n".format(path))
 
 def main(argv=None):
-    x_train, y_train, vocab_processor, x_dev, y_dev = preprocess()
-    train(x_train, y_train, vocab_processor, x_dev, y_dev)
+    for sid in ltcdata.get_sid_list(FLAGS.united_sid):
+        data = ltcdata.load_data(
+            os.path.join(
+                FLAGS.base_dir, ltcdata.make_name_indir(FLAGS.united_sid)),
+            with_train=True, with_dev=True,
+            is_united=FLAGS.united_sid, is_global=FLAGS.global_sid,
+            use_BERT_tokenizer=FLAGS.use_BERT_tokenizer, sid=sid)
+
+        name_cp_dir = ltcdata.make_name_outdir(
+            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid)
+        cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir)
+        
+        train(data["train"], data["dev"], data["num_vocab"], out_dir=cp_dir)
 
 if __name__ == '__main__':
     tf.app.run()
