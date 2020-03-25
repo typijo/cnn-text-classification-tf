@@ -205,16 +205,19 @@ def load_data(
         ret["train"] = load_examples(
             data_dir, FNAME_TRAIN, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        print("train data: %d examples" % ret["train"][1].shape[0])
 
     if with_dev:
         ret["dev"] = load_examples(
             data_dir, FNAME_DEV, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        print("dev data: %d examples" % ret["dev"][1].shape[0])
     
     if with_eval:
         ret["eval"] = load_examples(
             data_dir, FNAME_EVAL, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        print("eval data: %d examples" % ret["eval"][1].shape[0])
     
     return ret
 
