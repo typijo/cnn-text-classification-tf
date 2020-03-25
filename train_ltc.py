@@ -138,10 +138,10 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 step, summaries, loss, accuracy = sess.run(
                     [global_step, dev_summary_op, cnn.loss, cnn.accuracy],
                     feed_dict)
-                time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
                 if writer:
                     writer.add_summary(summaries, step)
+                
+                return loss, accuracy, step
 
             # Generate batches
             batches = data_helpers.batch_iter(
@@ -154,7 +154,21 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 current_step = tf.train.global_step(sess, global_step)
                 if current_step % FLAGS.evaluate_every == 0:
                     print("\nEvaluation:")
-                    dev_step(x_dev, y_dev, writer=dev_summary_writer)
+                    batches_dev = data_helpers.batch_iter(
+                        list(zip(x_dev, y_dev)), FLAGS.batch_size, 1)
+                    
+                    losses = []
+                    accuracies = []
+                    for batch_dev in batches_dev:
+                        loss_this, accuracy_this, step = dev_step(
+                            x_dev, y_dev, writer=dev_summary_writer)
+                        losses.append(loss_this)
+                        accuracies.append(accuracy_this)
+                    time_str = datetime.datetime.now().isoformat()
+                    print("{}: step {}, loss {:g}, acc {:g}".format(
+                        time_str, step,
+                        sum(losses)/len(losses), sum(accuracies)/len(accuracies)))
+
                     print("")
                 if current_step % FLAGS.checkpoint_every == 0:
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
