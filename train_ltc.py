@@ -162,8 +162,9 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                     losses = []
                     accuracies = []
                     for batch_dev in batches_dev:
+                        x_batch_dev, y_batch_dev = zip(*batch_dev)
                         loss_this, accuracy_this, step = dev_step(
-                            x_dev, y_dev, writer=dev_summary_writer)
+                            x_batch_dev, y_batch_dev, writer=dev_summary_writer)
                         losses.append(loss_this)
                         accuracies.append(accuracy_this)
                     time_str = datetime.datetime.now().isoformat()
