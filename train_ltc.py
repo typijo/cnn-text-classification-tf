@@ -146,6 +146,7 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
             # Generate batches
             batches = data_helpers.batch_iter(
                 list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
+            del x_train, y_train
             print("do %d epochs" % FLAGS.num_epochs)
             # Training loop. For each batch...
             for batch in batches:
@@ -153,9 +154,9 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 train_step(x_batch, y_batch)
                 current_step = tf.train.global_step(sess, global_step)
                 if current_step % FLAGS.evaluate_every == 0:
-                    print("\nEvaluation:")
                     batches_dev = data_helpers.batch_iter(
                         list(zip(x_dev, y_dev)), FLAGS.batch_size, 1)
+                    print("\nEvaluation:")
                     
                     losses = []
                     accuracies = []
