@@ -41,6 +41,7 @@ tf.flags.DEFINE_boolean("united_sid", False, "Make a united classifier")
 tf.flags.DEFINE_boolean("global_sid", False, "Make a classifier of global sid. This works only when united_sid=True")
 tf.flags.DEFINE_string("data_dir", "data_ltc", "Directory of datasets")
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
+tf.flags.DEFINE_integer("sid_from", 0, "Ltc from which it trains")
 
 FLAGS = tf.flags.FLAGS
 
@@ -163,6 +164,9 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
 
 def main(argv=None):
     for sid in ltcdata.get_sid_list(FLAGS.united_sid):
+        if sid < FLAGS.sid_from:
+            continue
+        
         data = ltcdata.load_data(
             os.path.join(
                 FLAGS.base_dir, ltcdata.make_name_indir(FLAGS.united_sid)),
