@@ -99,7 +99,7 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
             dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
 
             # Checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
-            checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
+            checkpoint_dir = os.path.join(out_dir, "checkpoints")
             checkpoint_prefix = os.path.join(checkpoint_dir, "model")
             print("checkpoints are saved to", checkpoint_dir)
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
