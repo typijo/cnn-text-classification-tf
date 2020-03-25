@@ -42,6 +42,7 @@ tf.flags.DEFINE_boolean("global_sid", False, "Make a classifier of global sid. T
 tf.flags.DEFINE_string("data_dir", "data_ltc", "Directory of datasets")
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
 tf.flags.DEFINE_integer("sid_from", 0, "Ltc from which it trains")
+tf.flags.DEFINE_integer("max_examples", 500000, "Max number of examples")
 
 FLAGS = tf.flags.FLAGS
 
@@ -172,7 +173,8 @@ def main(argv=None):
                 FLAGS.base_dir, ltcdata.make_name_indir(FLAGS.united_sid)),
             with_train=True, with_dev=True,
             is_united=FLAGS.united_sid, is_global=FLAGS.global_sid,
-            use_BERT_tokenizer=FLAGS.use_BERT_tokenizer, sid=sid)
+            use_BERT_tokenizer=FLAGS.use_BERT_tokenizer, sid=sid,
+            max_examples=FLAGS.max_examples)
 
         name_cp_dir = ltcdata.make_name_outdir(
             FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid)

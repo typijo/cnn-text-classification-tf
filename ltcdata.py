@@ -121,7 +121,8 @@ def separate_united_dataset(
 ### example process
 ###
 def load_examples(
-    basedir, name, tkn, vocab=None, is_united=True, is_global=False, sid=0, max_len=128):
+    basedir, name, tkn, vocab=None, is_united=True, is_global=False, sid=0,
+    max_len=128, max_examples=500000):
     """Make tuple of (examples, labels), each of which is numpy array."""
     if is_united:
         path = os.path.join(basedir, str(0), name)
@@ -155,7 +156,18 @@ def load_examples(
 
     n_labels = len(np.unique(labels))
     
-    return np.array(examples), np.eye(n_labels)[labels]
+    exlb = np.concatenate(
+        [np.array(examples), np.array(labels).reshape([-1, 1])], axis=1)
+    del examples # to save memory space
+
+    if type(max_examples) is int and exlb.shape[0] > max_examples:
+        chosen = np.random.choice(exlb.shape[0], max_examples, replace=False)
+        exlb = exlb[chosen]
+    
+    examples, labels = exlb[:,:-1], exlb[:,-1]
+    labels = np.eye(n_labels)[labels]
+
+    return examples, labels
 
 def pad_ids(wids, id_unk, max_len):
     return (wids + [id_unk for _ in range(max_len)])[:max_len]
@@ -167,7 +179,7 @@ def load_data(
     data_dir="data_ltc/separated",
     is_united=True, is_global=False, sid=0,
     with_train=False, with_dev=False, with_eval=False, 
-    use_BERT_tokenizer=False, max_len=128):
+    use_BERT_tokenizer=False, max_len=128, max_examples=500000):
     """Load vocab and examples."""
     if use_BERT_tokenizer:
         tkn = tokenizer.FullTokenizer(
@@ -192,17 +204,17 @@ def load_data(
     if with_train:
         ret["train"] = load_examples(
             data_dir, FNAME_TRAIN, ret["tokenizer"], ret["vocab"],
-            is_united, is_global, sid, max_len)
+            is_united, is_global, sid, max_len, max_examples)
 
     if with_dev:
         ret["dev"] = load_examples(
             data_dir, FNAME_DEV, ret["tokenizer"], ret["vocab"],
-            is_united, is_global, sid, max_len)
+            is_united, is_global, sid, max_len, max_examples)
     
     if with_eval:
         ret["eval"] = load_examples(
             data_dir, FNAME_EVAL, ret["tokenizer"], ret["vocab"],
-            is_united, is_global, sid, max_len)
+            is_united, is_global, sid, max_len, max_examples)
     
     return ret
 
