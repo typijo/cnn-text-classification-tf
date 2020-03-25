@@ -130,7 +130,7 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 """
                 Evaluates model on a dev set
                 """
-                print("passed")
+                print("passed", x_batch.shape, y_batch.shape)
                 feed_dict = {
                   cnn.input_x: x_batch,
                   cnn.input_y: y_batch,
