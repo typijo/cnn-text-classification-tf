@@ -194,7 +194,7 @@ def main(argv=None):
 
         name_cp_dir = ltcdata.make_name_outdir(
             FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid,
-            FLAGS.batch_size, FLAGS.num_epochs)
+            FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim)
         cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir)
         
         train(data["train"], data["dev"], data["num_vocab"], out_dir=cp_dir)
