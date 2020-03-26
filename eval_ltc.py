@@ -79,18 +79,21 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
                 # Generate batches for one epoch
                 batches = data_helpers.batch_iter(list(x_test), FLAGS.batch_size, 1, shuffle=False)
 
-                # Probs for global prediction
-                probs = graph.get_operation_by_name("output/scores").outputs[0]
+                # logits for global prediction
+                logits = graph.get_operation_by_name("output/scores").outputs[0]
 
-                # Collect the predictions and probs here
+                # Collect the predictions and logits here
                 all_predictions = []
-                all_probs = []
+                all_logits = None
 
                 for x_test_batch in batches:
-                    batch_predictions, batch_probs = sess.run(
-                        [predictions, probs], {input_x: x_test_batch, dropout_keep_prob: 1.0})
+                    batch_predictions, batch_logits = sess.run(
+                        [predictions, logits], {input_x: x_test_batch, dropout_keep_logit: 1.0})
                     all_predictions = np.concatenate([all_predictions, batch_predictions])
-                    all_probs = np.concatenate([all_probs, batch_probs])
+                    if all_logits is None:
+                        all_logits = batch_logits
+                    else:
+                        all_logits = np.concatenate([all_logits, batch_logits])
 
         # Print accuracy if y_test is defined
         if y_test is not None:
@@ -99,9 +102,9 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
             if FLAGS.united_sid and FLAGS.global_sid:
                 correct_predictions = 0
                 idrange = data["idrange"]
-                for yi, probi in zip(y_test, all_probs):
+                for yi, logiti in zip(y_test, all_logits):
                     id_from, id_to = idrange[yi]
-                    predi = id_from + np.argmax(probi[id_from:id_to+1])
+                    predi = id_from + np.argmax(logiti[id_from:id_to+1])
                     if yi == predi:
                         correct_predictions += 1
                     all_predictions_mod.append(predi)
