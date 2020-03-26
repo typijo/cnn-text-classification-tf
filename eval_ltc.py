@@ -88,7 +88,7 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
 
                 for x_test_batch in batches:
                     batch_predictions, batch_logits = sess.run(
-                        [predictions, logits], {input_x: x_test_batch, dropout_keep_logit: 1.0})
+                        [predictions, logits], {input_x: x_test_batch, dropout_keep_prob: 1.0})
                     all_predictions = np.concatenate([all_predictions, batch_predictions])
                     if all_logits is None:
                         all_logits = batch_logits
