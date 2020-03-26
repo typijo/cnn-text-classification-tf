@@ -193,7 +193,8 @@ def main(argv=None):
             max_examples=FLAGS.max_examples)
 
         name_cp_dir = ltcdata.make_name_outdir(
-            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid)
+            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid,
+            FLAGS.batch_size, FLAGS.num_epochs)
         cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir)
         
         train(data["train"], data["dev"], data["num_vocab"], out_dir=cp_dir)

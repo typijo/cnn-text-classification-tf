@@ -24,18 +24,22 @@ def get_sid_list(is_united):
 ### Model output path
 ###
 def make_str_of_setting(
-    is_united=False, is_global=False, use_BERT_tokenizer=False):
+    is_united=False, is_global=False, use_BERT_tokenizer=False, batch_size=None, num_epochs=None):
     ret = "united" if is_united else "separated"
     if is_united:
         ret += "_global" if is_global else "_local"
     if use_BERT_tokenizer:
         ret += "_BERTtkn"
+    if batch_size:
+        ret += "_%db" % batch_size
+    if num_epochs:
+        ret += "_%de" % num_epochs
     
     return ret
 
 def make_name_outdir(
-    is_united=False, is_global=False, use_BERT_tokenizer=False, sid=0):
-    ret = make_str_of_setting(is_united, is_global, use_BERT_tokenizer)
+    is_united=False, is_global=False, use_BERT_tokenizer=False, sid=0, batch_size=None, num_epochs=None):
+    ret = make_str_of_setting(is_united, is_global, use_BERT_tokenizer, batch_size, num_epochs)
     ret = os.path.join("runs_ltc", ret, str(sid))
 
     return ret
@@ -134,15 +138,15 @@ def load_examples(
     max_sid = 0
     max_tid_this = 0
     tid_offset = 0
+    idrange = []
     for line in tf.io.gfile.GFile(path, "r"):
         tid, sent, sid = parse_line(line)
 
         if sid != max_sid:
-            tid_offset = max_tid_this
+            for _ in range(max_tid_this - tid_offset + 1):
+                idrange.append((tid_offset, max_tid_this))
+            tid_offset = max_tid_this+1
             max_sid = sid
-
-        if is_united is True and is_global is False:
-            tid = tid - tid_offset
 
         if tkn:
             wids = tkn.convert_tokens_to_ids(tkn.tokenize(sent))
@@ -150,9 +154,13 @@ def load_examples(
         else:
             wids = tokenize(sent, vocab)
             wids = pad_ids(wids, vocab["[EOS]"], max_len)
-        
-        labels.append(tid)
         examples.append(wids)
+        
+        if is_united is True and is_global is False:
+            tid = tid - tid_offset
+        labels.append(tid)
+
+        max_tid_this = max(max_tid_this, tid)
 
     n_labels = len(np.unique(labels))
     
@@ -167,7 +175,7 @@ def load_examples(
     examples, labels = exlb[:,:-1], exlb[:,-1]
     labels = np.eye(n_labels)[labels]
 
-    return examples, labels
+    return examples, labels, idrange
 
 def pad_ids(wids, id_unk, max_len):
     return (wids + [id_unk for _ in range(max_len)])[:max_len]
@@ -179,7 +187,7 @@ def load_data(
     data_dir="data_ltc/separated",
     is_united=True, is_global=False, sid=0,
     with_train=False, with_dev=False, with_eval=False, 
-    use_BERT_tokenizer=False, max_len=128, max_examples=500000):
+    use_BERT_tokenizer=False, max_len=128, max_examples=500000, with_idrange=False):
     """Load vocab and examples."""
     if use_BERT_tokenizer:
         tkn = tokenizer.FullTokenizer(
@@ -202,21 +210,36 @@ def load_data(
         }
 
     if with_train:
-        ret["train"] = load_examples(
+        e, l, idr = load_examples(
             data_dir, FNAME_TRAIN, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        ret["train"] = (e, l)
+
+        if with_idrange and "idrange" not in ret:
+            ret["idrange"] = idr
+        
         print("train data: %d examples" % ret["train"][1].shape[0])
 
     if with_dev:
-        ret["dev"] = load_examples(
+        e, l, idr = load_examples(
             data_dir, FNAME_DEV, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        ret["dev"] = (e, l)
+
+        if with_idrange and "idrange" not in ret:
+            ret["idrange"] = idr
+
         print("dev data: %d examples" % ret["dev"][1].shape[0])
     
     if with_eval:
-        ret["eval"] = load_examples(
+        e, l, idr = ret["eval"] = load_examples(
             data_dir, FNAME_EVAL, ret["tokenizer"], ret["vocab"],
             is_united, is_global, sid, max_len, max_examples)
+        ret["eval"] = (e, l)
+
+        if with_idrange and "idrange" not in ret:
+            ret["idrange"] = idr
+
         print("eval data: %d examples" % ret["eval"][1].shape[0])
     
     return ret

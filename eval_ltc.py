@@ -28,18 +28,19 @@ tf.flags.DEFINE_boolean("united_sid", False, "Make a united classifier")
 tf.flags.DEFINE_boolean("global_sid", False, "Make a classifier of global sid. This works only when united_sid=True")
 tf.flags.DEFINE_string("data_dir", "data_ltc/separated", "Directory of datasets")
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
+tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 
 FLAGS = tf.flags.FLAGS
 
 path_accdata = os.path.join(FLAGS.base_dir, ltcdata.make_str_of_setting(
-    FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer) + ".txt")
+    FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, FLAGS.batch_size, FLAGS.num_epochs) + ".txt")
 
 with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
     for sid in ltcdata.get_sid_list(FLAGS.united_sid):
         data_dir = os.path.join(FLAGS.base_dir, FLAGS.data_dir)
         data = ltcdata.load_data(data_dir, with_eval=True,
                 is_united=FLAGS.united_sid, is_global=FLAGS.global_sid,
-                use_BERT_tokenizer=FLAGS.use_BERT_tokenizer, sid=sid)
+                use_BERT_tokenizer=FLAGS.use_BERT_tokenizer, sid=sid, with_idrange=True)
         x_test, y_test = data["eval"]
 
         print("\nEvaluating... sid: %d\n" % sid)
@@ -48,7 +49,7 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
         # Evaluation
         # ==================================================
         name_cp_dir = ltcdata.make_name_outdir(
-            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid)
+            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid, FLAGS.batch_size, FLAGS.num_epochs)
         cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir, "checkpoints")
         checkpoint_file = tf.train.latest_checkpoint(cp_dir)
         graph = tf.Graph()
@@ -73,17 +74,38 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
                 # Generate batches for one epoch
                 batches = data_helpers.batch_iter(list(x_test), FLAGS.batch_size, 1, shuffle=False)
 
-                # Collect the predictions here
+                # Probs for global prediction
+                probs = graph.get_operation_by_name("output/scores").outputs[0]
+
+                # Collect the predictions and probs here
                 all_predictions = []
+                all_probs = []
 
                 for x_test_batch in batches:
-                    batch_predictions = sess.run(predictions, {input_x: x_test_batch, dropout_keep_prob: 1.0})
+                    batch_predictions, batch_probs = sess.run(
+                        [predictions, probs], {input_x: x_test_batch, dropout_keep_prob: 1.0})
                     all_predictions = np.concatenate([all_predictions, batch_predictions])
+                    all_probs = np.concatenate([all_probs, batch_probs])
 
         # Print accuracy if y_test is defined
         if y_test is not None:
             y_test = np.argmax(y_test, axis=1)
-            correct_predictions = float(sum(all_predictions == y_test))
+            all_predictions_mod = []
+            if FLAGS.united_sid and FLAGS.global_sid:
+                correct_predictions = 0
+                idrange = data["idrange"]
+                for yi, probi in zip(y_test, all_probs):
+                    id_from, id_to = idrange[yi]
+                    predi = id_from + np.argmax(probi[id_from:id_to+1])
+                    if yi == predi:
+                        correct_predictions += 1
+                    all_predictions_mod.append(predi)
+                
+                correct_predictions = float(correct_predictions)
+                all_predictions_mod = np.array(all_predictions_mod)
+            else:
+                correct_predictions = float(sum(all_predictions == y_test))
+                all_predictions_mod = all_predictions
             print("Total number of test examples: {}".format(len(y_test)))
             print("Accuracy: {:g}".format(correct_predictions/float(len(y_test))))
 
@@ -92,7 +114,7 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
 
             cm = [[0 for _ in range(4)] for _ in range(4)]
 
-            for yi, pi in zip(y_test, all_predictions):
+            for yi, pi in zip(y_test, all_predictions_mod):
                 yi = int(yi)
                 pi = int(pi)
                 cm[yi][pi] += 1
