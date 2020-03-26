@@ -23,7 +23,7 @@ class TextCNN(object):
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             if path_to_initial_embedding:
                 with tf.io.gfile.GFile(path_to_initial_embedding, "rb") as fp:
-                    self.W = tf.Variable(np.load(fp))
+                    self.W = tf.Variable(np.load(fp), dtype=tf.float32)
             else:
                 self.W = tf.Variable(
                     tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0),
