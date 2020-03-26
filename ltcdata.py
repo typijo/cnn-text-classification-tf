@@ -24,7 +24,7 @@ def get_sid_list(is_united):
 ### Model output path
 ###
 def make_str_of_setting(
-    is_united=False, is_global=False, use_BERT_tokenizer=False, batch_size=None, num_epochs=None, embedding_dim=None):
+    is_united=False, is_global=False, use_BERT_tokenizer=False, batch_size=None, num_epochs=None, embedding_dim=None, use_initial_embedding=False):
     ret = "united" if is_united else "separated"
     if is_united:
         ret += "_global" if is_global else "_local"
@@ -36,12 +36,14 @@ def make_str_of_setting(
         ret += "_%db" % batch_size
     if num_epochs:
         ret += "_%de" % num_epochs
+    if use_initial_embedding:
+        ret += "_iemb"
     
     return ret
 
 def make_name_outdir(
-    is_united=False, is_global=False, use_BERT_tokenizer=False, sid=0, batch_size=None, num_epochs=None, embedding_dim=None):
-    ret = make_str_of_setting(is_united, is_global, use_BERT_tokenizer, batch_size, num_epochs, embedding_dim)
+    is_united=False, is_global=False, use_BERT_tokenizer=False, sid=0, batch_size=None, num_epochs=None, embedding_dim=None, use_initial_embedding=False):
+    ret = make_str_of_setting(is_united, is_global, use_BERT_tokenizer, batch_size, num_epochs, embedding_dim, use_initial_embedding)
     ret = os.path.join("runs_ltc", ret, str(sid))
 
     return ret

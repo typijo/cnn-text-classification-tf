@@ -30,11 +30,13 @@ tf.flags.DEFINE_string("data_dir", "data_ltc/separated", "Directory of datasets"
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
 tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("embedding_dim", 128, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_boolean("use_fasttext_vecs", False, "Whether use pretrained vectores by fasttext")
 
 FLAGS = tf.flags.FLAGS
 
 path_accdata = os.path.join(FLAGS.base_dir, ltcdata.make_str_of_setting(
-    FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim) + ".txt")
+    FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, FLAGS.batch_size,
+    FLAGS.num_epochs, FLAGS.embedding_dim, FLAGS.use_fasttext_vecs) + ".txt")
 
 with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
     for sid in ltcdata.get_sid_list(FLAGS.united_sid):
@@ -50,7 +52,9 @@ with tf.io.gfile.GFile(path_accdata, "w") as f_accdata:
         # Evaluation
         # ==================================================
         name_cp_dir = ltcdata.make_name_outdir(
-            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid, FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim)
+            FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid,
+            FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim,
+            FLAGS.use_fasttext_vecs)
         cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir, "checkpoints")
         checkpoint_file = tf.train.latest_checkpoint(cp_dir)
         graph = tf.Graph()

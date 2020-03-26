@@ -18,7 +18,7 @@ tf.flags.DEFINE_string("positive_data_file", "./data/rt-polaritydata/rt-polarity
 tf.flags.DEFINE_string("negative_data_file", "./data/rt-polaritydata/rt-polarity.neg", "Data source for the negative data.")
 
 # Model Hyperparameters
-tf.flags.DEFINE_integer("embedding_dim", 128, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
 tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
@@ -43,6 +43,7 @@ tf.flags.DEFINE_string("data_dir", "data_ltc", "Directory of datasets")
 tf.flags.DEFINE_string("base_dir", ".", "Directory of dataset / model. Select gs bucket when running on colab.")
 tf.flags.DEFINE_integer("sid_from", 0, "Ltc from which it trains")
 tf.flags.DEFINE_integer("max_examples", 500000, "Max number of examples")
+tf.flags.DEFINE_boolean("use_fasttext_vecs", False, "Whether use pretrained vectores by fasttext")
 
 FLAGS = tf.flags.FLAGS
 
@@ -51,6 +52,11 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
     # ==================================================
     x_train, y_train = data_train
     x_dev, y_dev = data_dev
+
+    if FLAGS.use_fasttext_vecs:
+        path_embedding = os.path.join(FLAGS.base_dir, "data_ltc", "wordvecs.npy")
+    else:
+        path_embedding = None
 
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
@@ -65,7 +71,8 @@ def train(data_train, data_dev, vocab_size, out_dir="."):
                 embedding_size=FLAGS.embedding_dim,
                 filter_sizes=list(map(int, FLAGS.filter_sizes.split(","))),
                 num_filters=FLAGS.num_filters,
-                l2_reg_lambda=FLAGS.l2_reg_lambda)
+                l2_reg_lambda=FLAGS.l2_reg_lambda,
+                path_to_initial_embedding=path_embedding)
 
             # Define Training procedure
             global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -194,7 +201,8 @@ def main(argv=None):
 
         name_cp_dir = ltcdata.make_name_outdir(
             FLAGS.united_sid, FLAGS.global_sid, FLAGS.use_BERT_tokenizer, sid,
-            FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim)
+            FLAGS.batch_size, FLAGS.num_epochs, FLAGS.embedding_dim,
+            FLAGS.use_fasttext_vecs)
         cp_dir = os.path.join(FLAGS.base_dir, name_cp_dir)
         
         train(data["train"], data["dev"], data["num_vocab"], out_dir=cp_dir)
